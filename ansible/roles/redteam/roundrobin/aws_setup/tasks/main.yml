@@ -1,0 +1,132 @@
+- name: Create lambda role
+  amazon.aws.iam_role:
+    access_key: "{{aws_key}}"
+    secret_key: "{{aws_secret_key}}"
+    name: round-robin-{{master_instance}}
+    assume_role_policy_document: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+      }
+  register: iam_role
+  connection: local
+  delegate_to: localhost
+  run_once: true
+
+- name: Create lambda policy
+  amazon.aws.iam_policy:
+    access_key: "{{aws_key}}"
+    secret_key: "{{aws_secret_key}}"
+    iam_type: role
+    iam_name: "round-robin-{{master_instance}}"
+    policy_name: "round-robin-{{master_instance}}-policy"
+    policy_json: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "ec2:StartInstances",
+              "ec2:StopInstances"
+            ],
+            "Resource": [
+              "arn:aws:ec2:eu-west-3:{{aws_info.accountId}}:instance/{{master_instance}}",
+              "arn:aws:ec2:eu-west-3:{{aws_info.accountId}}:instance/{{slave_instance}}"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:eu-west-3:{{aws_info.accountId}}:log-group:/aws/lambda/round-robin-lambda-{{master_instance}}:*"
+            ]
+          }
+        ]
+      }
+    state: present
+  run_once: true
+  connection: local
+  delegate_to: localhost
+
+- name: Create cloudlog group 
+  amazon.aws.cloudwatchlogs_log_group:
+    access_key: "{{aws_key}}"
+    secret_key: "{{aws_secret_key}}"
+    state: present
+    log_group_name: /aws/lambda/round-robin-lambda-{{master_instance}}
+  run_once: true
+  connection: local
+  delegate_to: localhost
+
+- name: Lets time to AWS for role creation
+  ansible.builtin.wait_for:
+    timeout: 10
+  run_once: true
+  connection: local
+  delegate_to: localhost
+  
+- name: Create lambda function
+  amazon.aws.lambda:
+    access_key: "{{aws_key}}"
+    secret_key: "{{aws_secret_key}}"
+    name: "round-robin-lambda-{{master_instance}}"
+    state: present
+    zip_file: /mnt/c/Users/yoann.dequeker/TerraformProjects/proxmox/ansible/roles/redteam/roundrobin/aws_setup/files/lambda.zip
+    runtime: python3.12
+    role: "{{iam_role.iam_role.arn}}"
+    handler: lambda_function.lambda_handler
+    timeout: 120
+    environment_variables: 
+      INSTANCE_ID_1: "{{master_instance}}"
+      INSTANCE_ID_2: "{{slave_instance}}"
+  run_once: true
+  register: lambda_info
+  connection: local
+  delegate_to: localhost
+
+- name: Create scheduler
+  amazon.aws.cloudwatchevent_rule:
+    access_key: "{{aws_key}}"
+    secret_key: "{{aws_secret_key}}"
+    name: round-robin-{{master_instance}}
+    schedule_expression: "rate(5 minutes)"
+    state: present
+    targets:
+      - id: round-robin-targets
+        arn: "{{lambda_info.configuration.function_arn}}"
+  run_once: true
+  connection: local
+  delegate_to: localhost
+  register: event_rule
+
+- name: Add permission for CloudWatch to invoke Lambda
+  amazon.aws.lambda_policy:
+    access_key: "{{ aws_key }}"
+    secret_key: "{{ aws_secret_key }}"
+    action: "lambda:InvokeFunction"
+    function_arn: "{{lambda_info.configuration.function_arn}}"
+    principal: "events.amazonaws.com"
+    statement_id: "round-robine-cloudwatch-trigger-{{master_instance}}"
+    source_arn: "{{ event_rule.rule.arn }}"
+  run_once: true
+  connection: local
+  delegate_to: localhost

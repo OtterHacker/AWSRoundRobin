@@ -1,0 +1,39 @@
+- name: Set a hostname
+  ansible.builtin.hostname:
+    name: "{{hostname}}"
+    use: systemd
+  register: hostname_change
+  become: true
+  become_user: root
+  become_method: sudo
+  when: "hostname is defined"
+
+- name: Reboot for hostname
+  ansible.builtin.reboot:
+  become: true
+  become_user: root
+  become_method: sudo
+  when: hostname_change.changed
+
+- name: Wait for reboot
+  wait_for_connection:
+    timeout: 3600
+  when: hostname_change.changed
+
+- name: Fix interrupted dpkg process
+  shell: |
+    export DEBIAN_FRONTEND=noninteractive 
+    dpkg --configure -a
+  ignore_errors: true
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Install expect
+  ansible.builtin.apt:
+    name: expect
+    state: present
+    update_cache: yes
+  become: true
+  become_user: root
+  become_method: sudo

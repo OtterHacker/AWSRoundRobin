@@ -1,0 +1,64 @@
+- name: Install dependencies
+  apt:
+    name: "{{item}}"
+    update_cache: yes
+    state: present
+  become: true
+  become_user: root
+  become_method: sudo
+  connection: ssh
+  loop:
+    - openvpn
+
+- name: Extract openvpn client configuration
+  copy:
+    src: /tmp/proxy.ovpn
+    dest: /etc/openvpn/proxy.conf
+  become: true
+  become_user: root
+  become_method: sudo 
+
+- name: Remove VPN Iptables rules
+  ansible.builtin.service:
+    name: openvpn-iptables
+    state: stopped
+    enabled: true
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Change VPN nat rules
+  shell: |
+    sed -i 's/POSTROUTING .*/POSTROUTING -o tun1 -j MASQUERADE/g' /etc/systemd/system/openvpn-iptables.service
+    systemctl daemon-reload
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Load openvpn Iptables rules
+  ansible.builtin.service:
+    name: openvpn-iptables
+    state: started
+    enabled: true
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Start VPN client
+  ansible.builtin.service:
+    name: openvpn@proxy.service
+    state: started
+    enabled: true
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Setup routing configuration
+  shell: |
+    echo "100 tun0" | tee -a /etc/iproute2/rt_tables
+    ip rule add from 10.9.0.0/24 table tun0
+    ip route add default dev tun1 table tun0
+    ip route flush cache
+  become: true
+  become_user: root
+  become_method: sudo

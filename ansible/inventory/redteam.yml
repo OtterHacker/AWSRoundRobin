@@ -1,0 +1,22 @@
+redteam:
+  vars:
+    aws_key: <AWS_KEY_ID>
+    aws_secret_key: <AWS_SECRET_KEY>
+    region: eu-west-3
+    vpn_port: 1194
+  children:
+
+    roundrobin:
+      children:
+        roundrobin_out:
+          children:
+            master:
+              hosts:
+                openvpn1:
+            slave:
+              hosts:
+                openvpn2:
+        roundrobin_in:
+          hosts:
+            openvpn_proxy:
+              vpn_clients: ['yderoundrobin', 'nessusroundrobin']

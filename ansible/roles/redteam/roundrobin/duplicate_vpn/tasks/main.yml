@@ -1,0 +1,80 @@
+- name: Copy openvpn configuration
+  community.general.archive:
+    path: /etc/openvpn/server
+    dest: /tmp/openvpn-conf.tar.gz
+  become: true
+  become_user: root
+  become_method: sudo 
+  when: inventory_hostname in groups['master']
+
+- name: Retrieve openvpn configuration
+  ansible.builtin.fetch:
+    src: /tmp/openvpn-conf.tar.gz
+    dest: /tmp/openvpn-conf.tar.gz
+    flat: yes
+  when: inventory_hostname in groups['master']
+
+- name: Extract openvpn configuration
+  ansible.builtin.unarchive:
+    src: /tmp/openvpn-conf.tar.gz
+    dest: /etc/openvpn/
+  become: true
+  become_user: root
+  become_method: sudo 
+  when: inventory_hostname in groups['slave']
+
+- name: Replace the local address binding
+  ansible.builtin.replace:
+    path: /etc/openvpn/server/server.conf
+    regexp: "^local {{master_private}}$"
+    replace: "local {{slave_private}}"
+  become: true
+  become_user: root
+  become_method: sudo 
+  when: inventory_hostname in groups['slave']
+
+- name: Replace the local dns setting
+  ansible.builtin.replace:
+    path: /etc/openvpn/server/server.conf
+    regexp: '^push "dhcp-option DNS {{master_private}}"$'
+    replace: 'push "dhcp-option DNS {{slave_private}}"'
+  become: true
+  become_user: root
+  become_method: sudo 
+  when: inventory_hostname in groups['slave']
+
+- name: Relaunch openvpn service
+  ansible.builtin.service:
+    name: openvpn-server@server.service
+    state: restarted
+  become: true
+  become_user: root
+  become_method: sudo
+  when: inventory_hostname in groups['slave']
+
+- name: Update openvpn client configuration template
+  template:
+    src: files/client_conf.j2
+    dest: /etc/openvpn/server/client-common.txt
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Create clients
+  ansible.builtin.shell: "/tmp/new_client_{{item}}.sh"
+  loop: "{{vpn_clients}}"
+  when: "vpn_clients is defined"
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Download client vpn config
+  ansible.builtin.fetch:
+    src: "/root/{{item}}.ovpn"
+    dest: "/tmp/{{item}}.ovpn"
+    flat: yes
+  when: "vpn_clients is defined"
+  become: true
+  become_user: root
+  become_method: sudo
+  loop: "{{vpn_clients}}"

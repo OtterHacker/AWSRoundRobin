@@ -1,0 +1,23 @@
+client
+dev tun
+proto tcp
+remote {{master_private}} 1194
+remote {{slave_private}} 1194
+remote-random
+pull-filter ignore "route "
+pull-filter ignore redirect-gateway
+connect-retry-max 0
+connect-retry 0
+connect-timeout 1
+ping-restart 1
+ping 1
+hand-window 1
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+auth SHA512
+ignore-unknown-option block-outside-dns
+verb 3
+

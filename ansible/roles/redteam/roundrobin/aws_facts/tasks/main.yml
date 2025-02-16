@@ -1,0 +1,66 @@
+- name: Get account number
+  uri:
+    url: http://169.254.169.254/latest/dynamic/instance-identity/document
+    method: GET
+    return_content: yes
+  register: aws_info_raw
+  run_once: true
+
+- name: Set fact aws info
+  set_fact:
+    aws_info: "{{ aws_info_raw.content| from_json }}"
+  delegate_to: "{{item}}"
+  delegate_facts: true
+  loop: "{{groups['roundrobin']}}"
+  run_once: true
+
+- name: Get OpenVPN instance id
+  uri:
+    url: http://169.254.169.254/latest/meta-data/instance-id
+    method: GET
+    return_content: yes
+  register: ec2_instance_id
+
+- name: Set fact instance id
+  set_fact:
+    "{{group_names|master_slave_group}}_instance": "{{ ec2_instance_id.content }}"
+  delegate_to: "{{item}}"
+  delegate_facts: true
+  loop: "{{groups['roundrobin']}}"
+
+- name: Get OpenVPN mac
+  uri:
+    url: "http://169.254.169.254//latest/meta-data/network/interfaces/macs/"
+    method: GET
+    return_content: yes
+  register: ec2_mac
+
+- name: Get OpenVPN private ip
+  uri:
+    url: "http://169.254.169.254//latest/meta-data/network/interfaces/macs/{{ec2_mac.content}}/local-ipv4s"
+    method: GET
+    return_content: yes
+  register: ec2_private_id
+
+- name: Set fact private ip
+  set_fact:
+    "{{group_names|master_slave_group}}_private": "{{ ec2_private_id.content }}"
+  delegate_to: "{{item}}"
+  delegate_facts: true
+  loop: "{{groups['roundrobin']}}"
+
+- name: Get OpenVPN public ip
+  uri:
+    url: "http://169.254.169.254//latest/meta-data/network/interfaces/macs/{{ec2_mac.content}}/public-ipv4s"
+    method: GET
+    return_content: yes 
+  register: ec2_public_id
+
+- name: Set fact public ip
+  set_fact:
+    "{{group_names|master_slave_group}}_public": "{{ ec2_public_id.content }}"
+  delegate_to: "{{item}}"
+  delegate_facts: true
+  loop: "{{groups['roundrobin']}}"
+
+

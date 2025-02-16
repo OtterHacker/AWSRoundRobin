@@ -1,0 +1,23 @@
+- hosts: redteam:&roundrobin 
+  gather_facts: yes
+  tasks:
+
+  roles:
+    - name: redteam/roundrobin/aws_facts
+    - name: linux/openvpn
+      when: "'roundrobin_out' in group_names"
+      vars:
+        vpn_clients: ['proxy']
+        skip_client: yes
+    - name: redteam/roundrobin/duplicate_vpn
+      when: "'roundrobin_out' in group_names"
+      vars:
+        vpn_clients: ['proxy']
+    - name: linux/openvpn
+      when: "'roundrobin_in' in group_names"
+      vars:
+        internal_vpn_network: 10.9.0.0
+    - name: redteam/roundrobin/proxy
+      when: "'roundrobin_in' in group_names"
+    - name: redteam/roundrobin/aws_setup
+

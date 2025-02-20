@@ -1,0 +1,66 @@
+- name: Upload installation expect script
+  template:
+    src: files/install.j2
+    dest: "/tmp/install.sh"
+    mode: "u+x"
+
+- name: Upload client expect script
+  template:
+    src: files/new_client.j2
+    dest: "/tmp/new_client_{{item}}.sh"
+    mode: "u+x"
+  loop: "{{vpn_clients}}"
+  when: "vpn_clients is defined"
+
+- name: Download openvpn install script
+  get_url:
+    url: https://git.io/vpn
+    dest: /tmp/openvpn-install.sh
+    mode: "u+x"
+
+- name: Install expect
+  apt:
+    name: expect
+    update_cache: yes
+    state: present
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Change internal ip
+  command: sed -i 's/10.8.0.0/{{internal_vpn_network}}/g' /tmp/openvpn-install.sh
+  become: true
+  become_user: root
+  become_method: sudo 
+  when: internal_vpn_network is defined
+
+- name: Check if the openvpn has already been installed
+  stat:
+    path: /etc/openvpn/server.conf
+  register: file_check
+
+- name: Install openvpn
+  ansible.builtin.shell: /tmp/install.sh
+  become: true
+  become_user: root
+  become_method: sudo
+  when: not file_check.stat.exists
+
+- name: Create clients
+  ansible.builtin.shell: "/tmp/new_client_{{item}}.sh"
+  loop: "{{vpn_clients}}"
+  when: "vpn_clients is defined and skip_client is not defined"
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Download client vpn config
+  ansible.builtin.fetch:
+    src: "/root/{{item}}.ovpn"
+    dest: "/tmp/{{item}}.ovpn"
+    flat: yes
+  when: "vpn_clients is defined and skip_client is not defined"
+  loop: "{{vpn_clients}}"
+  become: true
+  become_user: root
+  become_method: sudo

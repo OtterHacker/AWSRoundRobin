@@ -1,0 +1,24 @@
+- name: Install openvpn
+  ansible.builtin.apt:
+    name: openvpn
+    state: present
+    update_cache: yes
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Upload openvpn conf
+  ansible.builtin.copy:
+    src: "{{vpn_conf}}"
+    dest: "/etc/openvpn/client.conf"
+  become: true
+  become_user: root
+  become_method: sudo
+
+- name: Start VPN client service
+  ansible.builtin.service:
+    name: openvpn@client
+    state: started
+  become: true
+  become_user: root
+  become_method: sudo

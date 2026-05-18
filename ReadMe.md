@@ -28,4 +28,6 @@ This script will deploy the following ressources:
 
 The lambda will consume the minimal amount of memory available (125Mo I think).
 
+Technically works with t3.nano, for intensive scans use at least t3.micro 
+
 Enjoy !

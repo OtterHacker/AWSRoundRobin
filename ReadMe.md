@@ -18,11 +18,8 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ## Quick setup
 0. Set the variables in the terraform.tfvars file
 1. Setup credentials using `aws configure`
-2. Deploy the terraform
-3. Copy the host file in the `ansible/inventory/hosts.yml`
-4. Set the mandatory variables in `ansible/inventory/readteam.yml`
-5. Run the `playbook/readteam/roundrobin.yml` playbook
-6. Enjoy
+2. Run `./run.sh`
+3. Enjoy
 
 ## AWS content
 This script will deploy the following ressources:

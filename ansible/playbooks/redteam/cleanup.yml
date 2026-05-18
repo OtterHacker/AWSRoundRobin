@@ -1,0 +1,46 @@
+- name: Cleanup AWS Resources
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Get Master EC2 Instance Info from AWS API
+      amazon.aws.ec2_instance_info:
+        filters:
+          "tag:Name": "ROUNDROBIN.MASTER"
+        region: "{{ aws_region }}"
+      register: ec2_info
+
+    - name: Check if instance was found
+      ansible.builtin.fail:
+        msg: "Could not find the ROUNDROBIN.MASTER instance. If it's already deleted, you can just run terraform destroy directly."
+      when: ec2_info.instances | length == 0
+
+    - name: Set master_instance variable
+      set_fact:
+        master_instance: "{{ ec2_info.instances[0].instance_id }}"
+
+    - name: Delete EventBridge rule
+      amazon.aws.cloudwatchevent_rule:
+        name: "round-robin-{{ master_instance }}"
+        state: absent
+        region: "{{ aws_region }}"
+      ignore_errors: true
+
+    - name: Delete Lambda function
+      amazon.aws.lambda:
+        name: "round-robin-lambda-{{ master_instance }}"
+        state: absent
+        region: "{{ aws_region }}"
+      ignore_errors: true
+
+    - name: Delete CloudWatch Log Group
+      amazon.aws.cloudwatchlogs_log_group:
+        log_group_name: "/aws/lambda/round-robin-lambda-{{ master_instance }}"
+        state: absent
+        region: "{{ aws_region }}"
+      ignore_errors: true
+
+    - name: Delete IAM Role
+      amazon.aws.iam_role:
+        name: "round-robin-{{ master_instance }}"
+        state: absent
+      ignore_errors: true

@@ -30,7 +30,7 @@ resource "aws_security_group" "openvpn" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.cidr_blocks
   }
 
   ingress {
@@ -56,14 +56,14 @@ resource "aws_security_group" "proxy" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.cidr_blocks
   }
 
   ingress {
     from_port   = 1194
     to_port     = 1194
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.cidr_blocks
   }
 
   egress {
@@ -83,7 +83,7 @@ resource "aws_key_pair" "sshkey" {
 resource "aws_instance" "openvpn1" {
   provider = aws.aws
   ami           = data.aws_ami.debian.id
-  instance_type = "t2.nano"
+  instance_type = var.instance_type
   security_groups = [aws_security_group.openvpn.name]
   key_name      = aws_key_pair.sshkey.key_name
   tags = {
@@ -94,7 +94,7 @@ resource "aws_instance" "openvpn1" {
 resource "aws_instance" "openvpn2" {
   provider = aws.aws
   ami           = data.aws_ami.debian.id
-  instance_type = "t2.nano"
+  instance_type = var.instance_type
   security_groups = [aws_security_group.openvpn.name]
   key_name      = aws_key_pair.sshkey.key_name
   tags = {
@@ -105,7 +105,7 @@ resource "aws_instance" "openvpn2" {
 resource "aws_instance" "proxy" {
   provider = aws.aws
   ami           = data.aws_ami.debian.id
-  instance_type = "t2.nano"
+  instance_type = var.instance_type
   security_groups = [aws_security_group.proxy.name]
   key_name      = aws_key_pair.sshkey.key_name
   tags = {

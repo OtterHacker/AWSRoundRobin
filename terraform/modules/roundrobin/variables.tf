@@ -7,3 +7,13 @@ variable "ssh_key" {
 	description = "SSH key to use on the EC2"
 	type = string
 }
+
+variable "instance_type" {
+	description = "EC2 Instance Type"
+	type = string
+}
+
+variable "cidr_blocks" {
+	description = "Authorized CIDR"
+	type = list
+}

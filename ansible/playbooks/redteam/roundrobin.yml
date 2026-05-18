@@ -21,3 +21,14 @@
       when: "'roundrobin_in' in group_names"
     - name: redteam/roundrobin/aws_setup
 
+- name: Retrieve generated OVPN profiles
+  hosts: openvpn_proxy
+  become: true
+  gather_facts: no
+  tasks:
+    - name: Fetch OpenVPN configurations to the project root
+      ansible.builtin.fetch:
+        src: "/tmp/{{ item }}.ovpn"
+        dest: "{{ playbook_dir }}/../../../{{ item }}.ovpn"
+        flat: yes
+      loop: "{{ vpn_clients | default([]) }}"

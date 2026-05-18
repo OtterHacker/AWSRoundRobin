@@ -5,6 +5,7 @@ provider "aws" {
 
 data "aws_ami" "debian" {
   most_recent = true
+  provider    = aws.aws
   filter {
     name   = "name"
     values = ["debian-12-amd64-*"]

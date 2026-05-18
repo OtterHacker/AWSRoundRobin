@@ -35,8 +35,8 @@
               "ec2:StopInstances"
             ],
             "Resource": [
-              "arn:aws:ec2:eu-west-3:{{aws_info.accountId}}:instance/{{master_instance}}",
-              "arn:aws:ec2:eu-west-3:{{aws_info.accountId}}:instance/{{slave_instance}}"
+              "arn:aws:ec2:{{aws_region}}:{{aws_info.accountId}}:instance/{{master_instance}}",
+              "arn:aws:ec2:{{aws_region}}:{{aws_info.accountId}}:instance/{{slave_instance}}"
             ]
           },
           {
@@ -53,7 +53,7 @@
                 "logs:PutLogEvents"
             ],
             "Resource": [
-                "arn:aws:logs:eu-west-3:{{aws_info.accountId}}:log-group:/aws/lambda/round-robin-lambda-{{master_instance}}:*"
+                "arn:aws:logs:{{aws_region}}:{{aws_info.accountId}}:log-group:/aws/lambda/round-robin-lambda-{{master_instance}}:*"
             ]
           }
         ]

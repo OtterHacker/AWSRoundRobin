@@ -5,6 +5,8 @@ module "roundrobin" {
     }
     ssh_key = var.ssh_key
     aws_region = var.aws_region
+    instance_type = var.instance_type
+    cidr_blocks = var.cidr_blocks
 }
 
 locals {

@@ -12,7 +12,7 @@
 
 - name: Extract openvpn client configuration
   copy:
-    src: /tmp/proxy.ovpn
+    src: "{{ playbook_dir }}/proxy.ovpn"
     dest: /etc/openvpn/proxy.conf
   become: true
   become_user: root
@@ -44,21 +44,48 @@
   become_user: root
   become_method: sudo
 
+- name: Deploy OpenVPN dynamic routing
+  copy:
+    dest: /etc/openvpn/update-routing.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+
+      if ! grep -q "100 tun0" /etc/iproute2/rt_tables; then
+        echo "100 tun0" | tee -a /etc/iproute2/rt_tables
+      fi
+
+      ip rule del from 10.9.0.0/24 table tun0 2>/dev/null
+      ip rule add from 10.9.0.0/24 table tun0
+
+      ip route flush table tun0
+      ip route add default dev "$dev" table tun0
+      ip route flush cache
+
+      iptables -t nat -D POSTROUTING -s 10.9.0.0/24 -o $dev -j MASQUERADE 2>/dev/null
+      iptables -t nat -A POSTROUTING -s 10.9.0.0/24 -o $dev -j MASQUERADE
+
+  become: true
+  become_user: root
+  become_method: sudo
+  
+- name: Add routing script to proxy.conf
+  lineinfile:
+    path: /etc/openvpn/proxy.conf
+    line: "{{ item }}"
+  loop:
+    - "script-security 2"
+    - "route-up /etc/openvpn/update-routing.sh"
+    - "route-pre-down /etc/openvpn/update-routing.sh"
+  become: true
+  become_user: root
+  become_method: sudo
+
 - name: Start VPN client
   ansible.builtin.service:
     name: openvpn@proxy.service
     state: started
     enabled: true
-  become: true
-  become_user: root
-  become_method: sudo
-
-- name: Setup routing configuration
-  shell: |
-    echo "100 tun0" | tee -a /etc/iproute2/rt_tables
-    ip rule add from 10.9.0.0/24 table tun0
-    ip route add default dev tun1 table tun0
-    ip route flush cache
   become: true
   become_user: root
   become_method: sudo

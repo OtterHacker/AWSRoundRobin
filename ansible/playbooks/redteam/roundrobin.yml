@@ -1,6 +1,13 @@
 - hosts: redteam:&roundrobin 
-  gather_facts: yes
-  tasks:
+  gather_facts: no
+  pre_tasks:
+    - name: Wait for SSH to become available
+      ansible.builtin.wait_for_connection:
+        delay: 10    
+        timeout: 300   
+        
+    - name: Gather facts
+      ansible.builtin.setup: 
 
   roles:
     - name: redteam/roundrobin/aws_facts
@@ -20,4 +27,18 @@
     - name: redteam/roundrobin/proxy
       when: "'roundrobin_in' in group_names"
     - name: redteam/roundrobin/aws_setup
+      environment:
+        AWS_REGION: "{{ aws_region }}"
+        AWS_DEFAULT_REGION: "{{ aws_region }}"
 
+- name: Retrieve generated OVPN profiles
+  hosts: openvpn_proxy
+  become: true
+  gather_facts: no
+  tasks:
+    - name: Fetch OpenVPN configurations to the project root
+      ansible.builtin.fetch:
+        src: "/tmp/{{ item }}.ovpn"
+        dest: "{{ playbook_dir }}/../../../{{ item }}.ovpn"
+        flat: yes
+      loop: "{{ vpn_clients | default([]) }}"

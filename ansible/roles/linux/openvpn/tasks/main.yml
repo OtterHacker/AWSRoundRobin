@@ -53,14 +53,3 @@
   become: true
   become_user: root
   become_method: sudo
-
-- name: Download client vpn config
-  ansible.builtin.fetch:
-    src: "/root/{{item}}.ovpn"
-    dest: "/tmp/{{item}}.ovpn"
-    flat: yes
-  when: "vpn_clients is defined and skip_client is not defined"
-  loop: "{{vpn_clients}}"
-  become: true
-  become_user: root
-  become_method: sudo

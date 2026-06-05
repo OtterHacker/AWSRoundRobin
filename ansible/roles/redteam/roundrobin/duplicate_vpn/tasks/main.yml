@@ -63,17 +63,17 @@
 - name: Create clients
   ansible.builtin.shell: "/tmp/new_client_{{item}}.sh"
   loop: "{{vpn_clients}}"
-  when: "vpn_clients is defined"
+  when: "vpn_clients is defined and inventory_hostname in groups['master']"
   become: true
   become_user: root
   become_method: sudo
 
 - name: Download client vpn config
   ansible.builtin.fetch:
-    src: "/root/{{item}}.ovpn"
-    dest: "/tmp/{{item}}.ovpn"
+    src: "/tmp/{{item}}.ovpn"
+    dest: "{{ playbook_dir }}/{{item}}.ovpn"
     flat: yes
-  when: "vpn_clients is defined"
+  when: "vpn_clients is defined and inventory_hostname in groups['master']"
   become: true
   become_user: root
   become_method: sudo
